@@ -150,7 +150,7 @@ export const education = [
     institution: "AVS Engineering College, Salem, Tamil Nadu, India",
     period: "2025 - 2029(currently pursuing)",
     description: "Foundation in algorithms, data structures, software engineering, and AI/ML principles",
-    grade: "GPA:",
+    grade: "CGPA:",
   },
    {
     id: "2",
