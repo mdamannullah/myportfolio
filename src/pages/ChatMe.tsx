@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { aboutMe } from "@/data/portfolioData";
 import { Footer } from "@/components/Footer";
 import { TypingEffect } from "@/components/TypingEffect";
@@ -14,14 +14,14 @@ type QAPair = { q: string; a: string; tags?: string[] };
 const knowledge: QAPair[] = [
   { q: "What is your full name?", a: "Md Amannullah.", tags: ["name", "about", "me"] },
   { q: "Where are you from?", a: "Madhubani, Bihar (India).", tags: ["hometown", "bihar"] },
-  { q: "Languages you speak?", a: "English and Hindi; currently learning Tamil.", tags: ["language"] },
-  { q: "Tell me about your family.", a: "We’re a humble vendor family; my parents work hard and support my studies.", tags: ["family"] },
-  { q: "Your current college and program?", a: "B.E. CSE (AI & ML) at AVS Engineering College, 2025 batch.", tags: ["college","avs"] },
+  { q: "Languages you speak?", a: "English and Hindi; currently learning Tamil.", tags: ["language", "speak"] },
+  { q: "Tell me about your family.", a: "We’re a humble vendor family; my parents work hard and support my studies.", tags: ["family", "parents"] },
+  { q: "Your current college and program?", a: "B.E. CSE (AI & ML) at AVS Engineering College, 2025 batch.", tags: ["college","avs","branch"] },
   { q: "Your 12th board details?", a: "JAC Class 12 (Science): 273/500 (2nd Division).", tags: ["12th", "marks","jac"] },
-  { q: "Future plan?", a: "Become an AI/ML engineer; build web+AI projects and compete in hackathons.", tags: ["future","goal"] },
-  { q: "Your core skills?", a: "HTML, CSS, basic JavaScript/React; learning TypeScript and AI APIs.", tags: ["skills"] },
-  { q: "Top project?", a: "AI Portfolio Chat — this exact project!", tags: ["project"] },
-  { q: "How can I contact you?", a: "Email: you@example.com • GitHub: github.com/your-handle", tags: ["contact"] },
+  { q: "Future plan?", a: "Become an AI/ML engineer; build web+AI projects and compete in hackathons.", tags: ["future","goal","plan"] },
+  { q: "Your core skills?", a: "HTML, CSS, basic JavaScript/React; learning TypeScript and AI APIs.", tags: ["skills","tech","stack"] },
+  { q: "Top project?", a: "AI Portfolio Chat — this exact project!", tags: ["project","portfolio"] },
+  { q: "How can I contact you?", a: "Email: you@example.com • GitHub: github.com/your-handle", tags: ["contact","email","github"] },
 ];
 
 const fallbackMessage =
@@ -31,19 +31,21 @@ function tokens(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean);
 }
 function score(userQ: string, item: QAPair) {
-  let score = 0;
+  let sc = 0;
   const qT = new Set(tokens(userQ));
   const aT = new Set(tokens(item.q));
-  for (const t of qT) if (aT.has(t)) score += 2;
-  if (item.tags) for (const tag of item.tags) if (qT.has(tag)) score += 1;
-  return score;
+  for (const t of qT) if (aT.has(t)) sc += 2;
+  if (item.tags) for (const tag of item.tags) if (qT.has(tag.toLowerCase())) sc += 1;
+  // tiny boost if phrasing starts similarly
+  if (userQ.toLowerCase().startsWith(item.q.toLowerCase().slice(0, 10))) sc += 1;
+  return sc;
 }
 function askPortfolio(q: string) {
   const text = q.trim();
   if (!text) return fallbackMessage;
 
   let best: QAPair | null = null;
-  let bestScore = 0;
+  let bestScore = -1;
   for (const item of knowledge) {
     const s = score(text, item);
     if (s > bestScore) {
@@ -51,7 +53,7 @@ function askPortfolio(q: string) {
       bestScore = s;
     }
   }
-  return bestScore >= 3 ? best!.a : fallbackMessage;
+  return bestScore >= 3 && best ? best.a : fallbackMessage;
 }
 
 /* ---------------------------
@@ -60,6 +62,8 @@ function askPortfolio(q: string) {
 
 export default function ChatMe() {
   const navigate = useNavigate();
+  const location = useLocation() as { state?: { query?: string } };
+
   const [showContent, setShowContent] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
@@ -74,22 +78,36 @@ export default function ChatMe() {
 
 ${aboutMe.bio}`;
 
+  // auto-scroll chat
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
 
-  const send = () => {
-    const text = inputValue.trim();
+  // send helper (accepts optional forced text so Home page can pass a query)
+  const send = (forced?: string) => {
+    const text = (forced ?? inputValue).trim();
     if (!text || loading) return;
     setInputValue("");
     setMessages((m) => [...m, { role: "user", content: text }]);
     setLoading(true);
+    // small delay to simulate typing
     setTimeout(() => {
       const reply = askPortfolio(text);
       setMessages((m) => [...m, { role: "assistant", content: reply }]);
       setLoading(false);
-    }, 500);
+    }, 400);
   };
+
+  // if navigated from Home with { state: { query } }, auto-send it
+  useEffect(() => {
+    const q = location.state?.query;
+    if (q) {
+      // ensure the chat UI is visible first
+      setShowContent(true);
+      setTimeout(() => send(q), 50);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -110,7 +128,7 @@ ${aboutMe.bio}`;
         </div>
       </div>
 
-      {/* Intro Block */}
+      {/* Intro / Chat */}
       <div className="flex-1 max-w-4xl mx-auto w-full px-4 py-8 space-y-6">
         {!showContent && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
@@ -172,7 +190,7 @@ ${aboutMe.bio}`;
                     className="flex-1 bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground"
                   />
                   <button
-                    onClick={send}
+                    onClick={() => send()}
                     disabled={!inputValue.trim() || loading}
                     className="p-2 bg-primary text-primary-foreground rounded-full hover:scale-110 transition-transform"
                   >
@@ -189,7 +207,6 @@ ${aboutMe.bio}`;
     </div>
   );
 }
-
 
 
 
