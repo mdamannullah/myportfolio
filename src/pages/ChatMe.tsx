@@ -7,21 +7,21 @@ import { TypingEffect } from "@/components/TypingEffect";
 import { useState, useEffect, useRef } from "react";
 
 /* ---------------------------
-   STRICT LOCAL QA (same as Home)
+   STRICT LOCAL QA (tagged)
    --------------------------- */
 type QAPair = { q: string; a: string; tags?: string[] };
 
 const knowledge: QAPair[] = [
-  { q: "What is your full name?", a: "Md Amannullah.", tags: ["name", "about", "me"] },
-  { q: "Where are you from?", a: "Madhubani, Bihar (India).", tags: ["hometown", "bihar"] },
-  { q: "Languages you speak?", a: "English and Hindi; currently learning Tamil.", tags: ["language", "speak"] },
-  { q: "Tell me about your family.", a: "We’re a humble vendor family; my parents work hard and support my studies.", tags: ["family", "parents"] },
-  { q: "Your current college and program?", a: "B.E. CSE (AI & ML) at AVS Engineering College, 2025 batch.", tags: ["college","avs","branch"] },
-  { q: "Your 12th board details?", a: "JAC Class 12 (Science): 273/500 (2nd Division).", tags: ["12th", "marks","jac"] },
-  { q: "Future plan?", a: "Become an AI/ML engineer; build web+AI projects and compete in hackathons.", tags: ["future","goal","plan"] },
-  { q: "Your core skills?", a: "HTML, CSS, basic JavaScript/React; learning TypeScript and AI APIs.", tags: ["skills","tech","stack"] },
-  { q: "Top project?", a: "AI Portfolio Chat — this exact project!", tags: ["project","portfolio"] },
-  { q: "How can I contact you?", a: "Email: you@example.com • GitHub: github.com/your-handle", tags: ["contact","email","github"] },
+  { q: "What is your full name?", a: "Md Amannullah.", tags: ["about"] },
+  { q: "Where are you from?", a: "Madhubani, Bihar (India).", tags: ["about"] },
+  { q: "Languages you speak?", a: "English and Hindi; currently learning Tamil.", tags: ["about"] },
+  { q: "Tell me about your family.", a: "We’re a humble vendor family; my parents work hard and support my studies.", tags: ["family"] },
+  { q: "Your current college and program?", a: "B.E. CSE (AI & ML) at AVS Engineering College, 2025 batch.", tags: ["education"] },
+  { q: "Your 12th board details?", a: "JAC Class 12 (Science): 273/500 (2nd Division).", tags: ["education"] },
+  { q: "Future plan?", a: "Become an AI/ML engineer; build web+AI projects and compete in hackathons.", tags: ["about"] },
+  { q: "Your core skills?", a: "HTML, CSS, basic JavaScript/React; learning TypeScript and AI APIs.", tags: ["skills"] },
+  { q: "Top project?", a: "AI Portfolio Chat — this exact project!", tags: ["projects"] },
+  { q: "How can I contact you?", a: "Email: you@example.com • GitHub: github.com/your-handle", tags: ["contact"] },
 ];
 
 const fallbackMessage =
@@ -36,29 +36,30 @@ function score(userQ: string, item: QAPair) {
   const aT = new Set(tokens(item.q));
   for (const t of qT) if (aT.has(t)) sc += 2;
   if (item.tags) for (const tag of item.tags) if (qT.has(tag.toLowerCase())) sc += 1;
-  // tiny boost if phrasing starts similarly
   if (userQ.toLowerCase().startsWith(item.q.toLowerCase().slice(0, 10))) sc += 1;
   return sc;
 }
-function askPortfolio(q: string) {
+function askPortfolio(q: string): { answer: string; category: string } {
   const text = q.trim();
-  if (!text) return fallbackMessage;
-
+  if (!text) return { answer: fallbackMessage, category: "other" };
   let best: QAPair | null = null;
   let bestScore = -1;
   for (const item of knowledge) {
     const s = score(text, item);
-    if (s > bestScore) {
-      best = item;
-      bestScore = s;
-    }
+    if (s > bestScore) { best = item; bestScore = s; }
   }
-  return bestScore >= 3 && best ? best.a : fallbackMessage;
+  if (bestScore >= 3 && best) {
+    const category = best.tags?.[0] ?? "other";
+    return { answer: best.a, category };
+  }
+  return { answer: fallbackMessage, category: "other" };
 }
 
 /* ---------------------------
    COMPONENT
    --------------------------- */
+
+type Msg = { role: "user" | "assistant"; content: string; category?: string };
 
 export default function ChatMe() {
   const navigate = useNavigate();
@@ -66,7 +67,7 @@ export default function ChatMe() {
 
   const [showContent, setShowContent] = useState(false);
   const [inputValue, setInputValue] = useState("");
-  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -78,36 +79,135 @@ export default function ChatMe() {
 
 ${aboutMe.bio}`;
 
-  // auto-scroll chat
+  // scroll to bottom on update
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
 
-  // send helper (accepts optional forced text so Home page can pass a query)
+  // send helper
   const send = (forced?: string) => {
     const text = (forced ?? inputValue).trim();
     if (!text || loading) return;
     setInputValue("");
     setMessages((m) => [...m, { role: "user", content: text }]);
     setLoading(true);
-    // small delay to simulate typing
     setTimeout(() => {
-      const reply = askPortfolio(text);
-      setMessages((m) => [...m, { role: "assistant", content: reply }]);
+      const { answer, category } = askPortfolio(text);
+      setMessages((m) => [...m, { role: "assistant", content: answer, category }]);
       setLoading(false);
-    }, 400);
+    }, 300);
   };
 
-  // if navigated from Home with { state: { query } }, auto-send it
+  // get query from Home and auto-send
   useEffect(() => {
     const q = location.state?.query;
     if (q) {
-      // ensure the chat UI is visible first
       setShowContent(true);
       setTimeout(() => send(q), 50);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ---- UI helpers (pretty messages) ----------------
+  const Pill = ({ children }: { children: React.ReactNode }) => (
+    <span className="px-3 py-1 rounded-full text-sm bg-indigo-600 text-white">{children}</span>
+  );
+
+  const SectionCard = ({ title, emoji, children }: { title: string; emoji: string; children: React.ReactNode }) => (
+    <div className="rounded-2xl border border-border bg-white/70 dark:bg-zinc-900/60 shadow-sm p-4">
+      <div className="mb-3 font-semibold flex items-center gap-2">
+        <span className="text-xl">{emoji}</span>
+        <span>{title}</span>
+      </div>
+      {children}
+    </div>
+  );
+
+  function renderAssistant(msg: Msg, i: number) {
+    const content = msg.content;
+
+    // format by category
+    if (msg.category === "skills") {
+      const skills = content.split(/[;,•|]/).map(s => s.trim()).filter(Boolean);
+      return (
+        <SectionCard key={i} title="Skills" emoji="🧠">
+          <div className="flex flex-wrap gap-2">
+            {skills.map((s, idx) => (
+              <span key={idx} className="px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200 text-sm">
+                {s}
+              </span>
+            ))}
+          </div>
+        </SectionCard>
+      );
+    }
+
+    if (msg.category === "education") {
+      // simple split into lines if any
+      const lines = content.split("\n").filter(Boolean);
+      return (
+        <SectionCard key={i} title="Education" emoji="🎓">
+          <ul className="space-y-2">
+            {lines.map((l, idx) => (
+              <li key={idx} className="flex items-start gap-2">
+                <span className="mt-1">📘</span>
+                <span>{l}</span>
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
+      );
+    }
+
+    if (msg.category === "projects") {
+      return (
+        <SectionCard key={i} title="Project" emoji="🚀">
+          <p>{content}</p>
+        </SectionCard>
+      );
+    }
+
+    if (msg.category === "contact") {
+      // try to make links clickable
+      const withLinks = content.replace(
+        /(https?:\/\/[^\s]+|github\.com\/[^\s]+)/gi,
+        (m) => `<a class="underline" href="${m.startsWith('http') ? m : 'https://' + m}" target="_blank" rel="noreferrer">${m}</a>`
+      );
+      return (
+        <SectionCard key={i} title="Contact" emoji="✉️">
+          <p dangerouslySetInnerHTML={{ __html: withLinks }} />
+        </SectionCard>
+      );
+    }
+
+    if (msg.content === fallbackMessage) {
+      return (
+        <SectionCard key={i} title="I don’t know this one" emoji="🤝">
+          <p>{fallbackMessage}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Pill>About</Pill>
+            <Pill>Family</Pill>
+            <Pill>Education</Pill>
+            <Pill>Skills</Pill>
+            <Pill>Projects</Pill>
+            <Pill>Contact</Pill>
+          </div>
+        </SectionCard>
+      );
+    }
+
+    // default bubble
+    return (
+      <div key={i} className="text-left">
+        <div className="inline-block px-3 py-2 rounded-2xl bg-gray-200 dark:bg-zinc-800">
+          {content}
+        </div>
+      </div>
+    );
+  }
+
+  // small when empty; grows only when messages appear
+  const isEmpty = messages.length === 0 && !loading;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -142,25 +242,29 @@ ${aboutMe.bio}`;
             {/* Chat Messages */}
             <div
               ref={scrollRef}
-              className="bg-card border border-border rounded-3xl p-6 shadow-lg h-[58vh] overflow-y-auto"
+              className={[
+                "bg-card border border-border rounded-3xl p-6 shadow-lg overflow-y-auto transition-all",
+                isEmpty ? "min-h-[120px] max-h-[50vh]" : "max-h-[60vh]"
+              ].join(" ")}
             >
-              {messages.length === 0 && (
+              {isEmpty && (
                 <p className="text-muted-foreground">
                   ✨ Ask me anything about Mohammad — family, college, marks, skills…
                 </p>
               )}
 
-              {messages.map((m, i) => (
-                <div key={i} className={`mb-3 ${m.role === "user" ? "text-right" : "text-left"}`}>
-                  <div
-                    className={`inline-block px-3 py-2 rounded-2xl ${
-                      m.role === "user" ? "bg-indigo-600 text-white" : "bg-gray-200 dark:bg-zinc-800"
-                    }`}
-                  >
-                    {m.content}
+              {/* render each message */}
+              {messages.map((m, i) =>
+                m.role === "user" ? (
+                  <div key={i} className="mb-3 text-right">
+                    <div className="inline-block px-3 py-2 rounded-2xl bg-indigo-600 text-white">
+                      {m.content}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ) : (
+                  <div key={i} className="mb-3">{renderAssistant(m, i)}</div>
+                )
+              )}
 
               {loading && (
                 <div className="text-left">
@@ -207,6 +311,7 @@ ${aboutMe.bio}`;
     </div>
   );
 }
+
 
 
 
