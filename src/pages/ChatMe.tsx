@@ -12,16 +12,16 @@ import { useState, useEffect, useRef } from "react";
 type QAPair = { q: string; a: string; tags?: string[] };
 
 const knowledge: QAPair[] = [
-  { q: "What is your full name?", a: "Md Amannullah.", tags: ["about"] },
-  { q: "Where are you from?", a: "Madhubani, Bihar (India).", tags: ["about"] },
-  { q: "Languages you speak?", a: "English and Hindi; currently learning Tamil.", tags: ["about"] },
+  { q: "What is your full name?", a: "My name is Mohammad Amannullah", tags: ["about"] },
+  { q: "Where are you from?", a: "Madhubani, Darbhanga, Bihar (India); currently in Salem, Tamil Nadu", tags: ["about"] },
+  { q: "Languages you speak?", a: "English, Hindi, Urdu, Arabic; currently learning Tamil.", tags: ["about"] },
   { q: "Tell me about your family.", a: "We’re a humble vendor family; my parents work hard and support my studies.", tags: ["family"] },
-  { q: "Your current college and program?", a: "B.E. CSE (AI & ML) at AVS Engineering College, 2025 batch.", tags: ["education"] },
+  { q: "Your current college and program?", a: "B.E. CSE (AI & ML) at AVS Engineering College, Salem, Tamil Nadu, 2025 batch.", tags: ["education"] },
   { q: "Your 12th board details?", a: "JAC Class 12 (Science): 273/500 (2nd Division).", tags: ["education"] },
   { q: "Future plan?", a: "Become an AI/ML engineer; build web+AI projects and compete in hackathons.", tags: ["about"] },
-  { q: "Your core skills?", a: "HTML, CSS, basic JavaScript/React; learning TypeScript and AI APIs.", tags: ["skills"] },
+  { q: "Your core skills?", a: "HTML, CSS, JavaScript, React, Python, NumPy, PyTorc, C; learning TypeScript, Tailwind CSS and AI APIs.", tags: ["skills"] },
   { q: "Top project?", a: "AI Portfolio Chat — this exact project!", tags: ["projects"] },
-  { q: "How can I contact you?", a: "Email: you@example.com • GitHub: github.com/your-handle", tags: ["contact"] },
+  { q: "How can I contact you?", a: "Email: info.mohmdam@gmail.com • GitHub: github.com/mdamannullah", tags: ["contact"] },
 ];
 
 const fallbackMessage =
@@ -56,9 +56,35 @@ function askPortfolio(q: string): { answer: string; category: string } {
 }
 
 /* ---------------------------
+   EMOJI HELPERS
+   --------------------------- */
+function categoryEmoji(cat?: string) {
+  switch ((cat || "").toLowerCase()) {
+    case "skills": return "🧠";
+    case "education": return "🎓";
+    case "projects": return "🚀";
+    case "contact": return "✉️";
+    case "family": return "👨‍👩‍👦";
+    case "about": return "👋";
+    default: return "💡";
+  }
+}
+function sprinkleEmojis(text: string) {
+  // Lightweight keyword → emoji decoration
+  return text
+    .replace(/\b(html)\b/gi, "HTML 🧩")
+    .replace(/\b(css)\b/gi, "CSS 🎨")
+    .replace(/\bjavascript\b/gi, "JavaScript ⚡")
+    .replace(/\breact\b/gi, "React ⚛️")
+    .replace(/\btypescript\b/gi, "TypeScript 🔷")
+    .replace(/\bai\b/gi, "AI 🤖")
+    .replace(/\bvercel\b/gi, "Vercel ▲")
+    .replace(/\btailwind\b/gi, "Tailwind 🌬️");
+}
+
+/* ---------------------------
    COMPONENT
    --------------------------- */
-
 type Msg = { role: "user" | "assistant"; content: string; category?: string };
 
 export default function ChatMe() {
@@ -69,6 +95,7 @@ export default function ChatMe() {
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(false);
+  const [typingIndex, setTypingIndex] = useState<number | null>(null); // index of message currently typing
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const introText = `💡 Here's a bit about me!
@@ -79,10 +106,34 @@ export default function ChatMe() {
 
 ${aboutMe.bio}`;
 
-  // scroll to bottom on update
+  // auto-scroll
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, loading, typingIndex]);
+
+  // type a message into messages[idx]
+  function typeIntoMessage(idx: number, full: string, speed = 16) {
+    setTypingIndex(idx);
+    const txt = sprinkleEmojis(full);
+    let i = 0;
+    const step = () => {
+      i += 1;
+      setMessages(prev => {
+        const arr = [...prev];
+        const current = arr[idx];
+        if (!current) return prev;
+        arr[idx] = { ...current, content: txt.slice(0, i) };
+        return arr;
+      });
+      if (i < txt.length) {
+        // schedule next frame
+        window.setTimeout(step, speed);
+      } else {
+        setTypingIndex(null);
+      }
+    };
+    step();
+  }
 
   // send helper
   const send = (forced?: string) => {
@@ -93,9 +144,12 @@ ${aboutMe.bio}`;
     setLoading(true);
     setTimeout(() => {
       const { answer, category } = askPortfolio(text);
-      setMessages((m) => [...m, { role: "assistant", content: answer, category }]);
+      // push empty assistant message then type into it
+      setMessages((m) => [...m, { role: "assistant", content: "", category }]);
       setLoading(false);
-    }, 300);
+      const idx = messages.length + 1; // index of the one we just pushed
+      typeIntoMessage(idx, `${answer}`, 14); // speed (ms/char)
+    }, 250);
   };
 
   // get query from Home and auto-send
@@ -103,7 +157,7 @@ ${aboutMe.bio}`;
     const q = location.state?.query;
     if (q) {
       setShowContent(true);
-      setTimeout(() => send(q), 50);
+      setTimeout(() => send(q), 60);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -124,13 +178,12 @@ ${aboutMe.bio}`;
   );
 
   function renderAssistant(msg: Msg, i: number) {
-    const content = msg.content;
+    const emoji = categoryEmoji(msg.category);
 
-    // format by category
     if (msg.category === "skills") {
-      const skills = content.split(/[;,•|]/).map(s => s.trim()).filter(Boolean);
+      const skills = msg.content.split(/[;,•|]/).map(s => s.trim()).filter(Boolean);
       return (
-        <SectionCard key={i} title="Skills" emoji="🧠">
+        <SectionCard key={i} title="Skills" emoji={emoji}>
           <div className="flex flex-wrap gap-2">
             {skills.map((s, idx) => (
               <span key={idx} className="px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200 text-sm">
@@ -143,17 +196,21 @@ ${aboutMe.bio}`;
     }
 
     if (msg.category === "education") {
-      // simple split into lines if any
-      const lines = content.split("\n").filter(Boolean);
+      const lines = msg.content.split("\n").filter(Boolean);
       return (
-        <SectionCard key={i} title="Education" emoji="🎓">
+        <SectionCard key={i} title="Education" emoji={emoji}>
           <ul className="space-y-2">
-            {lines.map((l, idx) => (
+            {lines.length ? lines.map((l, idx) => (
               <li key={idx} className="flex items-start gap-2">
                 <span className="mt-1">📘</span>
                 <span>{l}</span>
               </li>
-            ))}
+            )) : (
+              <li className="flex items-start gap-2">
+                <span className="mt-1">📘</span>
+                <span>{msg.content}</span>
+              </li>
+            )}
           </ul>
         </SectionCard>
       );
@@ -161,20 +218,19 @@ ${aboutMe.bio}`;
 
     if (msg.category === "projects") {
       return (
-        <SectionCard key={i} title="Project" emoji="🚀">
-          <p>{content}</p>
+        <SectionCard key={i} title="Project" emoji={emoji}>
+          <p>{msg.content}</p>
         </SectionCard>
       );
     }
 
     if (msg.category === "contact") {
-      // try to make links clickable
-      const withLinks = content.replace(
+      const withLinks = msg.content.replace(
         /(https?:\/\/[^\s]+|github\.com\/[^\s]+)/gi,
         (m) => `<a class="underline" href="${m.startsWith('http') ? m : 'https://' + m}" target="_blank" rel="noreferrer">${m}</a>`
       );
       return (
-        <SectionCard key={i} title="Contact" emoji="✉️">
+        <SectionCard key={i} title="Contact" emoji={emoji}>
           <p dangerouslySetInnerHTML={{ __html: withLinks }} />
         </SectionCard>
       );
@@ -185,12 +241,8 @@ ${aboutMe.bio}`;
         <SectionCard key={i} title="I don’t know this one" emoji="🤝">
           <p>{fallbackMessage}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Pill>About</Pill>
-            <Pill>Family</Pill>
-            <Pill>Education</Pill>
-            <Pill>Skills</Pill>
-            <Pill>Projects</Pill>
-            <Pill>Contact</Pill>
+            <Pill>About</Pill><Pill>Family</Pill><Pill>Education</Pill>
+            <Pill>Skills</Pill><Pill>Projects</Pill><Pill>Contact</Pill>
           </div>
         </SectionCard>
       );
@@ -200,14 +252,14 @@ ${aboutMe.bio}`;
     return (
       <div key={i} className="text-left">
         <div className="inline-block px-3 py-2 rounded-2xl bg-gray-200 dark:bg-zinc-800">
-          {content}
+          {msg.content}
         </div>
       </div>
     );
   }
 
   // small when empty; grows only when messages appear
-  const isEmpty = messages.length === 0 && !loading;
+  const isEmpty = messages.length === 0 && !loading && typingIndex === null;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -244,7 +296,7 @@ ${aboutMe.bio}`;
               ref={scrollRef}
               className={[
                 "bg-card border border-border rounded-3xl p-6 shadow-lg overflow-y-auto transition-all",
-                isEmpty ? "min-h-[120px] max-h-[50vh]" : "max-h-[60vh]"
+                isEmpty ? "min-h-[120px] max-h-[48vh]" : "max-h-[60vh]"
               ].join(" ")}
             >
               {isEmpty && (
@@ -253,7 +305,6 @@ ${aboutMe.bio}`;
                 </p>
               )}
 
-              {/* render each message */}
               {messages.map((m, i) =>
                 m.role === "user" ? (
                   <div key={i} className="mb-3 text-right">
@@ -262,7 +313,9 @@ ${aboutMe.bio}`;
                     </div>
                   </div>
                 ) : (
-                  <div key={i} className="mb-3">{renderAssistant(m, i)}</div>
+                  <div key={i} className="mb-3">
+                    {renderAssistant(m, i)}
+                  </div>
                 )
               )}
 
