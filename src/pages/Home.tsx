@@ -133,7 +133,16 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <Footer />
+     {/* Resume Download CTA */}
+<div className="w-full flex justify-center pb-6 mt-10">
+  <a
+    href="/resume.pdf"
+    download="Mohammad_Amannullah_Resume.pdf"
+    className="px-6 py-3 rounded-full bg-primary text-primary-foreground font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-transform"
+  >
+    📄 Download Resume
+  </a>
+</div>
     </div>
   );
 }
