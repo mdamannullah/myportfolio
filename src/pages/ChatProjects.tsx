@@ -113,7 +113,8 @@ export default function ChatProjects() {
               className="bg-card border border-border rounded-3xl p-6 shadow-lg"
             >
               <h2 className="text-xl font-bold mb-4">
-                🌈 <TypingEffect text="Here are all my projects, organized by category 👇" speed={20} />
+                {/* 🌈 <TypingEffect text="Here are all my projects, organized by category 👇" speed={20} /> */}
+                 <TypingEffect text="No Project to display" speed={20} /> 
               </h2>
             </motion.div>
 
