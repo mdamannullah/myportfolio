@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, User, Briefcase, Code, GraduationCap, BookOpen, Mail } from "lucide-react";
+import { ArrowRight, User, Briefcase, Code, GraduationCap, BookOpen, Mail, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
@@ -13,13 +13,20 @@ const placeholders = [
   "Ask about Mohammad's education 🎓",
 ];
 
-const quickActions = [
+// add resume as a quick action
+type QuickAction =
+  | { label: string; icon: any; path: string; resume?: false }
+  | { label: string; icon: any; resume: true };
+
+const quickActions: QuickAction[] = [
   { label: "Me", icon: User, path: "/chat/me" },
   { label: "Projects", icon: Briefcase, path: "/chat/projects" },
   { label: "Skills", icon: Code, path: "/chat/skills" },
   { label: "Experience", icon: BookOpen, path: "/chat/experience" },
   { label: "Education", icon: GraduationCap, path: "/chat/education" },
   { label: "Contact", icon: Mail, path: "/chat/contact" },
+  // resume tab
+  { label: "Resume", icon: FileText, resume: true },
 ];
 
 export default function Home() {
@@ -36,9 +43,8 @@ export default function Home() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const q = inputValue.trim();
-    if (q) {
-      navigate("/chat/me", { state: { query: q } });
+    if (inputValue.trim()) {
+      navigate("/chat/me", { state: { query: inputValue } });
     }
   };
 
@@ -46,7 +52,11 @@ export default function Home() {
     <div className="min-h-screen flex flex-col cursor-glow">
       {/* Navbar */}
       <nav className="w-full px-6 py-4 flex justify-between items-center">
-        <motion.h1 initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="text-2xl font-bold">
+        <motion.h1
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="text-2xl font-bold"
+        >
           Mohammad<span className="gradient-text">.AI</span>
         </motion.h1>
         <ThemeToggle />
@@ -67,16 +77,28 @@ export default function Home() {
 
           {/* Greeting */}
           <div className="text-center space-y-4">
-            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-              className="text-xl text-muted-foreground">
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-xl text-muted-foreground"
+            >
               Hey, I'm Mohammad's 👋
             </motion.p>
-            <motion.h2 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-              className="text-6xl font-bold">
+            <motion.h2
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="text-6xl font-bold"
+            >
               AI Portfolio
             </motion.h2>
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-              className="text-6xl">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="text-6xl"
+            >
               🧑‍💻
             </motion.div>
           </div>
@@ -100,53 +122,62 @@ export default function Home() {
               <button
                 type="submit"
                 className="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-primary text-primary-foreground rounded-full hover:scale-110 transition-transform shadow-lg"
-                aria-label="Send"
-                title="Send"
+                aria-label="Ask Mohammad.AI"
+                title="Ask Mohammad.AI"
               >
                 <ArrowRight className="w-5 h-5" />
               </button>
             </div>
           </motion.form>
 
-          {/* Quick Actions */}
+          {/* Quick Actions (now includes Resume) */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
             className="flex flex-wrap gap-3 justify-center"
           >
-            {quickActions.map((action, index) => (
-              <motion.button
-                key={action.label}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.7 + index * 0.05 }}
-                onClick={() => navigate(action.path)}
-                className="flex items-center gap-2 px-6 py-3 bg-card border border-border rounded-full hover:bg-accent hover:border-accent transition-all hover:scale-105 shadow-sm"
-              >
-                <action.icon className="w-4 h-4" />
-                <span className="font-medium">{action.label}</span>
-              </motion.button>
-            ))}
+            {quickActions.map((action, index) => {
+              const Icon = action.icon;
+              const isResume = "resume" in action && action.resume;
+
+              return (
+                <motion.button
+                  key={action.label}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.7 + index * 0.05 }}
+                  onClick={() => {
+                    if (isResume) {
+                      // open resume in new tab
+                      window.open("/resume.pdf", "_blank", "noopener,noreferrer");
+                    } else {
+                      // @ts-ignore safe because non-resume has path
+                      navigate(action.path);
+                    }
+                  }}
+                  className={[
+                    "flex items-center gap-2 px-6 py-3 rounded-full transition-all hover:scale-105 shadow-sm",
+                    "bg-card border border-border hover:bg-accent hover:border-accent",
+                    isResume ? "ring-1 ring-primary/30" : ""
+                  ].join(" ")}
+                  aria-label={action.label}
+                  title={isResume ? "View Resume" : action.label}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="font-medium">{action.label}</span>
+                </motion.button>
+              );
+            })}
           </motion.div>
         </motion.div>
       </div>
 
-      {/* Footer */}
-     {/* Resume Download CTA */}
-<div className="w-full flex justify-center pb-6 mt-10">
-  <a
-    href="/resume.pdf"
-    download="Mohammad_Amannullah_Resume.pdf"
-    className="px-6 py-3 rounded-full bg-primary text-primary-foreground font-semibold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-transform"
-  >
-    📄 Download Resume
-  </a>
-</div>
+      {/* Footer (unchanged, includes "Made with ❤️ by Mohammad") */}
+      <Footer />
     </div>
   );
 }
-
 
 
 
