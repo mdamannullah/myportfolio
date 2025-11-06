@@ -1,10 +1,21 @@
+// FILE: src/pages/Home.tsx
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, User, Briefcase, Code, GraduationCap, BookOpen, Mail, FileText } from "lucide-react";
+import {
+  ArrowRight,
+  User,
+  Briefcase,
+  Code,
+  GraduationCap,
+  BookOpen,
+  Mail,
+  FileText,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 
+/* Rotating placeholder lines in the hero input */
 const placeholders = [
   "I'm Mohammad's AI — ask me anything…",
   "Ask me about Mohammad's skills 🤖",
@@ -13,19 +24,19 @@ const placeholders = [
   "Ask about Mohammad's education 🎓",
 ];
 
-// add resume as a quick action
+/* Quick actions (Projects is disabled, Resume opens PDF) */
 type QuickAction =
-  | { label: string; icon: any; path: string; resume?: false }
-  | { label: string; icon: any; resume: true };
+  | { label: string; icon: any; path: string; disabled?: false; resume?: false }
+  | { label: string; icon: any; resume: true; disabled?: false }
+  | { label: string; icon: any; path?: string; disabled: true };
 
 const quickActions: QuickAction[] = [
   { label: "Me", icon: User, path: "/chat/me" },
-  { label: "Projects", icon: Briefcase, path: "/chat/projects" },
+  { label: "Projects", icon: Briefcase, disabled: true }, // 🚫 disabled
   { label: "Skills", icon: Code, path: "/chat/skills" },
   { label: "Experience", icon: BookOpen, path: "/chat/experience" },
   { label: "Education", icon: GraduationCap, path: "/chat/education" },
   { label: "Contact", icon: Mail, path: "/chat/contact" },
-  // resume tab
   { label: "Resume", icon: FileText, resume: true },
 ];
 
@@ -35,9 +46,10 @@ export default function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentPlaceholder((prev) => (prev + 1) % placeholders.length);
-    }, 2500);
+    const interval = setInterval(
+      () => setCurrentPlaceholder((p) => (p + 1) % placeholders.length),
+      2500
+    );
     return () => clearInterval(interval);
   }, []);
 
@@ -130,7 +142,7 @@ export default function Home() {
             </div>
           </motion.form>
 
-          {/* Quick Actions (now includes Resume) */}
+          {/* Quick Actions (Projects is disabled, Resume opens PDF) */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -140,6 +152,7 @@ export default function Home() {
             {quickActions.map((action, index) => {
               const Icon = action.icon;
               const isResume = "resume" in action && action.resume;
+              const isDisabled = "disabled" in action && action.disabled;
 
               return (
                 <motion.button
@@ -147,22 +160,42 @@ export default function Home() {
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.7 + index * 0.05 }}
-                  onClick={() => {
+                  onClick={(e) => {
+                    if (isDisabled) {
+                      // Block all interaction
+                      e.preventDefault();
+                      e.stopPropagation();
+                      return;
+                    }
                     if (isResume) {
-                      // open resume in new tab
                       window.open("/resume.pdf", "_blank", "noopener,noreferrer");
-                    } else {
-                      // @ts-ignore safe because non-resume has path
-                      navigate(action.path);
+                      return;
+                    }
+                    // @ts-ignore path exists for enabled actions
+                    navigate(action.path);
+                  }}
+                  onKeyDown={(e) => {
+                    if (isDisabled && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
                     }
                   }}
                   className={[
-                    "flex items-center gap-2 px-6 py-3 rounded-full transition-all hover:scale-105 shadow-sm",
-                    "bg-card border border-border hover:bg-accent hover:border-accent",
-                    isResume ? "ring-1 ring-primary/30" : ""
+                    "flex items-center gap-2 px-6 py-3 rounded-full transition-all shadow-sm",
+                    "bg-card border border-border",
+                    isDisabled
+                      ? "cursor-not-allowed opacity-60 hover:opacity-60" // 🚫 system cursor + no hover scale
+                      : "hover:bg-accent hover:border-accent hover:scale-105",
+                    isResume ? "ring-1 ring-primary/30" : "",
                   ].join(" ")}
-                  aria-label={action.label}
-                  title={isResume ? "View Resume" : action.label}
+                  aria-disabled={isDisabled || undefined}
+                  tabIndex={isDisabled ? -1 : 0}
+                  title={
+                    isDisabled
+                      ? "Projects are not available right now"
+                      : isResume
+                      ? "View Resume"
+                      : action.label
+                  }
                 >
                   <Icon className="w-4 h-4" />
                   <span className="font-medium">{action.label}</span>
@@ -173,11 +206,12 @@ export default function Home() {
         </motion.div>
       </div>
 
-      {/* Footer (unchanged, includes "Made with ❤️ by Mohammad") */}
+      {/* Footer (your original footer, unchanged — includes “Made with ❤️ by Mohammad”) */}
       <Footer />
     </div>
   );
 }
+
 
 
 
