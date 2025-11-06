@@ -78,7 +78,8 @@ export default function ChatProjects() {
             className="bg-card border border-border rounded-3xl p-6 shadow-lg"
           >
             <p className="text-foreground mb-4">
-              <TypingEffect text="🚀 Let me show you my projects! Which category would you like to explore?" speed={15} />
+              {/* <TypingEffect text="🚀 Let me show you my projects! Which category would you like to explore?" speed={15} /> */}
+               <TypingEffect text="I am currently in my career growth stilll learning to build projects....." speed={15} />
             </p>
           </motion.div>
         )}
