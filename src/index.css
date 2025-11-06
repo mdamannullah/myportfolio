@@ -2,10 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
+/* ===============================
+   DESIGN THEME – HSL Color System
+   =============================== */
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -69,6 +68,9 @@ All colors MUST be HSL.
   }
 }
 
+/* ===========================
+   GLOBAL ELEMENT STYLES
+   =========================== */
 @layer base {
   * {
     @apply border-border;
@@ -79,11 +81,14 @@ All colors MUST be HSL.
   }
 }
 
+/* ===========================
+   UTILITIES & INTERACTION FX
+   =========================== */
 @layer utilities {
   .cursor-glow {
     position: relative;
   }
-  
+
   #cursor-glow {
     position: fixed;
     width: 40px;
@@ -99,24 +104,59 @@ All colors MUST be HSL.
   .dark #cursor-glow {
     background: radial-gradient(circle, hsl(var(--primary) / 0.6), transparent);
   }
-  
+
+  /* Float animation for icons/images */
   .animate-float {
     animation: float 3s ease-in-out infinite;
   }
   
   @keyframes float {
-    0%, 100% {
-      transform: translateY(0px);
-    }
-    50% {
-      transform: translateY(-10px);
-    }
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
   }
-  
+
+  /* Gradient Text */
   .gradient-text {
     background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(217, 91%, 75%) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+}
+
+/* ===========================
+   POLISH (Accessibility / Mobile / Reduced Motion)
+   =========================== */
+
+/* Mobile spacing improvement */
+@media (max-width: 360px) {
+  .p-4 { padding: 0.75rem !important; }
+  .px-6 { padding-left: 1rem !important; padding-right: 1rem !important; }
+}
+
+/* Better keyboard focus rings */
+:focus-visible {
+  outline: 2px solid hsl(var(--primary)) !important;
+  outline-offset: 3px !important;
+  border-radius: 0.5rem;
+}
+
+/* Disable intense animations for motion-sensitive users */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Force remove cursor-glow on touch screens */
+@media (max-width: 767px) {
+  #cursor-glow { display: none !important; }
+}
+
+/* Better dark bubble backgrounds */
+.dark .bubble-muted {
+  background-color: hsl(0 0% 26%) !important;
+  color: hsl(0 0% 98%) !important;
 }
