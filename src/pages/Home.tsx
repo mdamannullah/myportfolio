@@ -173,7 +173,7 @@ export default function Home() {
 
   const a = document.createElement("a");
   a.href = resumeUrl;
-  a.download = "Mohammad_Amannullah_Resume.pdf";
+  a.download = "resume.pdf";
   document.body.appendChild(a);
   a.click();
   a.remove();
